@@ -3,7 +3,10 @@ MT5 Data Connector for Forex Trading System
 Handles connection, data retrieval, and real-time streaming from MetaTrader 5
 """
 
-import MetaTrader5 as mt5
+try:
+    import MetaTrader5 as mt5
+except ImportError:
+    mt5 = None
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
@@ -18,15 +21,15 @@ logger = logging.getLogger(__name__)
 
 class Timeframe(Enum):
     """MT5 Timeframe mappings"""
-    M1 = mt5.TIMEFRAME_M1
-    M5 = mt5.TIMEFRAME_M5
-    M15 = mt5.TIMEFRAME_M15
-    M30 = mt5.TIMEFRAME_M30
-    H1 = mt5.TIMEFRAME_H1
-    H4 = mt5.TIMEFRAME_H4
-    D1 = mt5.TIMEFRAME_D1
-    W1 = mt5.TIMEFRAME_W1
-    MN1 = mt5.TIMEFRAME_MN1
+    M1 = getattr(mt5, 'TIMEFRAME_M1', 'TIMEFRAME_M1')
+    M5 = getattr(mt5, 'TIMEFRAME_M5', 'TIMEFRAME_M5')
+    M15 = getattr(mt5, 'TIMEFRAME_M15', 'TIMEFRAME_M15')
+    M30 = getattr(mt5, 'TIMEFRAME_M30', 'TIMEFRAME_M30')
+    H1 = getattr(mt5, 'TIMEFRAME_H1', 'TIMEFRAME_H1')
+    H4 = getattr(mt5, 'TIMEFRAME_H4', 'TIMEFRAME_H4')
+    D1 = getattr(mt5, 'TIMEFRAME_D1', 'TIMEFRAME_D1')
+    W1 = getattr(mt5, 'TIMEFRAME_W1', 'TIMEFRAME_W1')
+    MN1 = getattr(mt5, 'TIMEFRAME_MN1', 'TIMEFRAME_MN1')
 
 
 @dataclass
@@ -70,6 +73,8 @@ class MT5Connector:
 
     def connect(self) -> bool:
         """Establish connection to MT5 with retry logic"""
+        if mt5 is None:
+            raise RuntimeError("MetaTrader5 requires Windows and a local MT5 terminal; install requirements-mt5.txt")
         import time
 
         for attempt in range(self.max_retries):
@@ -153,6 +158,10 @@ class MT5Connector:
             pairs.extend(minors)
         if include_exotics:
             pairs.extend(exotics)
+
+        # Offline catalogue is not a broker-availability claim.
+        if mt5 is None or not self.connected:
+            return pairs
 
         # Verify symbols exist in MT5
         available_pairs = []

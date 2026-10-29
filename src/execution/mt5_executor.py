@@ -3,7 +3,10 @@ Order Execution Module for MT5
 Handles order placement, modification, and position management
 """
 
-import MetaTrader5 as mt5
+try:
+    import MetaTrader5 as mt5
+except ImportError:
+    mt5 = None
 from typing import Optional, Dict, Tuple
 from enum import Enum
 import logging
@@ -15,12 +18,12 @@ logger = logging.getLogger(__name__)
 
 class OrderType(Enum):
     """Order types"""
-    BUY = mt5.ORDER_TYPE_BUY
-    SELL = mt5.ORDER_TYPE_SELL
-    BUY_LIMIT = mt5.ORDER_TYPE_BUY_LIMIT
-    SELL_LIMIT = mt5.ORDER_TYPE_SELL_LIMIT
-    BUY_STOP = mt5.ORDER_TYPE_BUY_STOP
-    SELL_STOP = mt5.ORDER_TYPE_SELL_STOP
+    BUY = getattr(mt5, 'ORDER_TYPE_BUY', 'ORDER_TYPE_BUY')
+    SELL = getattr(mt5, 'ORDER_TYPE_SELL', 'ORDER_TYPE_SELL')
+    BUY_LIMIT = getattr(mt5, 'ORDER_TYPE_BUY_LIMIT', 'ORDER_TYPE_BUY_LIMIT')
+    SELL_LIMIT = getattr(mt5, 'ORDER_TYPE_SELL_LIMIT', 'ORDER_TYPE_SELL_LIMIT')
+    BUY_STOP = getattr(mt5, 'ORDER_TYPE_BUY_STOP', 'ORDER_TYPE_BUY_STOP')
+    SELL_STOP = getattr(mt5, 'ORDER_TYPE_SELL_STOP', 'ORDER_TYPE_SELL_STOP')
 
 
 @dataclass
@@ -48,6 +51,8 @@ class MT5OrderExecutor:
             magic_number: Magic number for order identification
             max_retries: Maximum retry attempts for failed orders
         """
+        if mt5 is None:
+            raise RuntimeError("MT5 execution requires Windows, MetaTrader5 and a configured terminal")
         self.magic_number = magic_number
         self.max_retries = max_retries
 
@@ -234,7 +239,7 @@ class MT5OrderExecutor:
         volume = lot_size if lot_size else position.volume
 
         # Determine close type (opposite of position type)
-        close_type = mt5.ORDER_TYPE_SELL if position.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
+        close_type = getattr(mt5, 'ORDER_TYPE_SELL', 'ORDER_TYPE_SELL') if position.type == getattr(mt5, 'ORDER_TYPE_BUY', 'ORDER_TYPE_BUY') else mt5.ORDER_TYPE_BUY
 
         # Get current price
         tick = mt5.symbol_info_tick(position.symbol)
@@ -247,7 +252,7 @@ class MT5OrderExecutor:
                 error_message=f"Failed to get tick for {position.symbol}"
             )
 
-        price = tick.bid if close_type == mt5.ORDER_TYPE_SELL else tick.ask
+        price = tick.bid if close_type == getattr(mt5, 'ORDER_TYPE_SELL', 'ORDER_TYPE_SELL') else tick.ask
 
         request = {
             "action": mt5.TRADE_ACTION_DEAL,
@@ -322,7 +327,7 @@ class MT5OrderExecutor:
         return {
             'ticket': pos.ticket,
             'symbol': pos.symbol,
-            'type': 'BUY' if pos.type == mt5.ORDER_TYPE_BUY else 'SELL',
+            'type': 'BUY' if pos.type == getattr(mt5, 'ORDER_TYPE_BUY', 'ORDER_TYPE_BUY') else 'SELL',
             'volume': pos.volume,
             'price_open': pos.price_open,
             'price_current': pos.price_current,

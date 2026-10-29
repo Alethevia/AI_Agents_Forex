@@ -6,9 +6,9 @@ AI Agents Forex - 一键完整回测系统
 ===================================================================================
 
 功能：
-✓ 自动安装依赖
-✓ 自动配置 API
-✓ 真实数据回测（5年）
+✓ 显式安装依赖
+✓ 默认离线，无需 API
+✓ 人工模拟数据演示（不是历史外汇回测）
 ✓ 智能自适应学习
 ✓ 多币对支持
 
@@ -22,35 +22,6 @@ import subprocess
 import sys
 import os
 from pathlib import Path
-
-print("="*80)
-print("AI Agents Forex - 一键完整回测系统")
-print("="*80)
-print("\n🚀 启动回测系统...\n")
-
-# ==================================================================================
-# 第1步：自动安装依赖
-# ==================================================================================
-
-def install_dependencies():
-    """自动安装所有必需依赖"""
-    required = [
-        'pandas', 'numpy', 'MetaTrader5', 'openai',
-        'anthropic', 'google-generativeai', 'scikit-learn'
-    ]
-
-    print("📦 检查并安装依赖...")
-    try:
-        subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "-q"] + required,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
-        )
-        print("✓ 依赖安装完成\n")
-    except:
-        print("⚠ 部分依赖安装失败，但继续运行\n")
-
-install_dependencies()
 
 import argparse
 import json
@@ -283,7 +254,7 @@ class CompleteBacktestEngine:
         self.balance = initial_balance
         self.leverage = leverage
         self.duration_years = duration_years
-        self.duration_days = duration_years * 365
+        self.duration_days = max(1, int(duration_years * 365))
 
         # 初始化 LLM 客户端
         self.llm_client = None
@@ -536,6 +507,7 @@ class CompleteBacktestEngine:
             print("  1. 市场条件不满足交易条件")
             print("  2. 自适应学习系统过滤了所有信号")
             print("  3. 数据质量问题")
+            self._save_report()
             return
 
         total_trades = len(self.trades)
@@ -578,6 +550,8 @@ class CompleteBacktestEngine:
                     'leverage': self.leverage,
                     'duration_years': self.duration_years
                 },
+                'data_provenance': 'synthetic_simulation',
+                'historical_performance_claim': False,
                 'results': {
                     'total_trades': len(self.trades),
                     'winning_trades': sum(1 for t in self.trades if t['profit'] > 0),
@@ -602,7 +576,13 @@ class CompleteBacktestEngine:
 def main():
     """主程序入口"""
     # 配置 API 密钥
-    api_key = configure_api_key()
+    parser = argparse.ArgumentParser(description="人工模拟市场演示；不代表真实历史业绩")
+    parser.add_argument("--years", type=float, default=1.0)
+    args = parser.parse_args()
+    if args.years <= 0:
+        parser.error("--years must be positive")
+    api_key = None
+    print("SYNTHETIC DATA ONLY — not historical market performance")
 
     # 创建回测引擎
     print("\n" + "="*60)
@@ -613,7 +593,7 @@ def main():
         symbols=['EURUSD', 'GBPUSD', 'USDJPY'],
         initial_balance=10000.0,
         leverage=50,
-        duration_years=5,
+        duration_years=args.years,
         api_key=api_key
     )
 

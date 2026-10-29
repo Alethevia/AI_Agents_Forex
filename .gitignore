@@ -57,3 +57,6 @@ backtest_results/*.csv
 
 # MT5
 *.dat
+
+.pytest_cache/
+node_modules/
